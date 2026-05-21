@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>外劳电工信息汇总</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: "Microsoft YaHei", "PingFang SC", sans-serif; background: #f0f2f5; color: #333; display: flex; min-height: 100vh; }
+.sidebar {
+  width: 240px; background: #1a1a2e; color: #eee; flex-shrink: 0;
+  display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh;
+  overflow-y: auto; z-index: 10; transition: transform 0.3s;
+}
+.sidebar-header { padding: 24px 20px; border-bottom: 1px solid rgba(255,255,255,.1); }
+.sidebar-header h2 { font-size: 18px; color: #fff; }
+.sidebar-header p { font-size: 12px; color: #888; margin-top: 4px; }
+.category-list { list-style: none; padding: 8px 0; flex: 1; }
+.category-list li {
+  padding: 12px 20px; cursor: pointer; display: flex; justify-content: space-between;
+  align-items: center; font-size: 14px; transition: background .15s; border-left: 3px solid transparent;
+}
+.category-list li:hover { background: rgba(255,255,255,.05); }
+.category-list li.active { background: rgba(255,255,255,.1); border-left-color: #4fc3f7; color: #4fc3f7; }
+.category-list li .count { font-size: 11px; background: rgba(255,255,255,.15); padding: 2px 8px; border-radius: 10px; }
+.category-list li.active .count { background: #4fc3f7; color: #1a1a2e; }
+.main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.topbar {
+  background: #fff; padding: 16px 28px; box-shadow: 0 1px 4px rgba(0,0,0,.06);
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+}
+.topbar .menu-btn { display: none; background: none; border: none; font-size: 24px; cursor: pointer; padding: 4px 8px; color: #555; }
+.topbar .search-box { flex: 1; min-width: 200px; position: relative; }
+.topbar .search-box input {
+  width: 100%; padding: 10px 40px 10px 16px; border: 1px solid #ddd; border-radius: 8px;
+  font-size: 14px; outline: none; transition: border .2s;
+}
+.topbar .search-box input:focus { border-color: #4fc3f7; }
+.topbar .search-box .clear-btn {
+  position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; font-size: 18px; cursor: pointer; color: #999;
+  display: none; line-height: 1;
+}
+.topbar .result-info { font-size: 13px; color: #888; white-space: nowrap; }
+.content { flex: 1; padding: 20px 28px; overflow-y: auto; }
+.card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
+.job-card {
+  background: #fff; border-radius: 10px; padding: 20px; cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0,0,0,.06); transition: transform .15s, box-shadow .15s;
+  border-left: 4px solid transparent;
+}
+.job-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,.1); }
+.job-card .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+.job-card .card-title { font-size: 16px; font-weight: 600; color: #1a1a2e; flex: 1; }
+.job-card .card-salary {
+  font-size: 15px; font-weight: 700; color: #e65100; white-space: nowrap;
+  background: #fff3e0; padding: 3px 10px; border-radius: 6px; margin-left: 8px;
+}
+.job-card .card-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.job-card .card-tag { font-size: 12px; padding: 3px 10px; border-radius: 12px; background: #e8f5e9; color: #2e7d32; }
+.job-card .card-tag.lang { background: #e3f2fd; color: #1565c0; }
+.job-card .card-tag.age { background: #fce4ec; color: #c62828; }
+.job-card .card-tag.time { background: #f3e5f5; color: #7b1fa2; }
+.job-card .card-tag.accom { background: #fff8e1; color: #f57f17; }
+.job-card .card-remark {
+  font-size: 13px; color: #666; margin-top: 10px; line-height: 1.5;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 100;
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.modal {
+  background: #fff; border-radius: 12px; max-width: 700px; width: 100%; max-height: 85vh;
+  overflow-y: auto; box-shadow: 0 8px 30px rgba(0,0,0,.2); position: relative;
+}
+.modal-close {
+  position: sticky; top: 12px; float: right; background: #eee; border: none;
+  width: 32px; height: 32px; border-radius: 50%; font-size: 18px; cursor: pointer;
+  z-index: 2; margin-right: 12px; display: flex; align-items: center; justify-content: center;
+  transition: background .15s;
+}
+.modal-close:hover { background: #ddd; }
+.modal-body { padding: 24px 28px 28px; clear: both; }
+.modal-title { font-size: 22px; font-weight: 700; color: #1a1a2e; margin-bottom: 4px; padding-right: 40px; }
+.modal-company { font-size: 14px; color: #888; margin-bottom: 16px; }
+.modal-salary {
+  display: inline-block; font-size: 20px; font-weight: 700; color: #e65100;
+  background: #fff3e0; padding: 6px 16px; border-radius: 8px; margin-bottom: 20px;
+}
+.modal-section { margin-bottom: 18px; }
+.modal-section h4 { font-size: 14px; color: #999; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 1px; }
+.modal-section .info-row { display: flex; flex-wrap: wrap; gap: 12px; font-size: 14px; }
+.modal-section .info-item { background: #f5f5f5; padding: 8px 14px; border-radius: 6px; white-space: nowrap; }
+.modal-section .info-item strong { color: #555; margin-right: 4px; }
+.modal-section .full-text { font-size: 14px; line-height: 1.7; color: #444; }
+.modal-section .highlight-box {
+  background: #fffde7; border: 1px solid #fff9c4; padding: 12px 16px;
+  border-radius: 8px; font-size: 13px; color: #6d4c41; line-height: 1.6;
+}
+.empty { text-align: center; padding: 60px 20px; color: #999; }
+.empty .icon { font-size: 48px; margin-bottom: 16px; }
+.menu-mask { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 9; }
+@media (max-width: 768px) {
+  .sidebar { position: fixed; left: 0; top: 0; transform: translateX(-100%); height: 100vh; }
+  .sidebar.open { transform: translateX(0); }
+  .topbar .menu-btn { display: block; }
+  .menu-mask.show { display: block; }
+  .card-grid { grid-template-columns: 1fr; }
+  .content { padding: 12px; }
+  .topbar { padding: 12px; }
+}
+</style>
+</head>
+<body>
+
+<div class="menu-mask" id="menuMask" onclick="toggleSidebar()"></div>
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <h2>外劳电工信息</h2>
+    <p>香港·澳门电工类职位</p>
+  </div>
+  <ul class="category-list" id="categoryList"></ul>
+</aside>
+
+<main class="main">
+  <div class="topbar">
+    <button class="menu-btn" onclick="toggleSidebar()">&#9776;</button>
+    <div class="search-box">
+      <input type="text" id="searchInput" placeholder="搜索职位、技能、要求..." oninput="doSearch()">
+      <button class="clear-btn" id="clearBtn" onclick="clearSearch()">&times;</button>
+    </div>
+    <span class="result-info" id="resultInfo"></span>
+  </div>
+  <div class="content">
+    <div class="card-grid" id="cardGrid"></div>
+    <div class="empty" id="emptyState" style="display:none">
+      <div class="icon">&#128269;</div>
+      <p>没有找到匹配的职位</p>
+    </div>
+  </div>
+</main>
+
+<div class="modal-overlay" id="modalOverlay" style="display:none" onclick="closeModal(event)">
+  <div class="modal" id="modalBox" onclick="event.stopPropagation()">
+    <button class="modal-close" onclick="closeModal()">&times;</button>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+var JOBS = [
+  {
+    "id": 1,
+    "title": "电工（不限语言）",
+    "company": "货柜码头",
+    "salary": "HKD 17,663 + 加班另计",
+    "age": "男, 52岁以下",
+    "language": "不限语言",
+    "workTime": "每周6天, 每天9小时",
+    "accommodation": "住扣10%",
+    "category": "电工",
+    "requirement": "需要有电工证，货柜码头的吊柜机械维修、货柜维修（有人带）以及协助日常运作",
+    "remark": "不会粤语的面试通过后培训1个月粤语（需要无犯罪证明、无传染性疾病）"
+  },
+  {
+    "id": 2,
+    "title": "水电维修（餐饮）",
+    "company": "香港K知名连锁茶餐厅",
+    "salary": "HKD 17,950",
+    "age": "男, 50岁内",
+    "language": "广东话",
+    "workTime": "每天9小时（不包括吃饭）",
+    "accommodation": "提供工作餐、提供住宿（住宿扣10%）",
+    "category": "水电、屋宇维修",
+    "requirement": "熟悉水电维修、木工等，有餐饮餐厅/酒楼水电维修经验优先。负责维修餐厅炉灶（蒸炉、炒炉、炸炉、扒炉等）、冰箱、水电、电路维护等一般电器",
+    "remark": "面试时间2月24日视频面试；月休4天；签注2年"
+  },
+  {
+    "id": 3,
+    "title": "电业技术员（专才）",
+    "company": "香港某公司",
+    "salary": "HKD 18,000 - 23,000",
+    "age": "男女不限, 18-40岁",
+    "language": "语言不限",
+    "workTime": "8小时, 月休4日",
+    "accommodation": "面议",
+    "category": "专才岗位",
+    "requirement": "五年以上相关工作经验，中专以上学历。负责大型屋苑、商场电力维修保养，包括WR2、制柜、发电机的检查维修，供电输电设备的安装、检查、保养及客户紧急维修工程",
+    "remark": "合同期24个月"
+  },
+  {
+    "id": 4,
+    "title": "基站电工",
+    "company": "香港某通讯公司",
+    "salary": "HKD 16,340",
+    "age": "男, 45岁以下",
+    "language": "粤语",
+    "workTime": "每周6天, 每天9小时",
+    "accommodation": "住宿扣10%",
+    "category": "电工",
+    "requirement": "一年以上5G基站调试经验，会使用PIM，有国内证书或者三大运营商工作经验优先",
+    "remark": "入港面试"
+  },
+  {
+    "id": 5,
+    "title": "弱电技工（电子支付）",
+    "company": "香港某公司",
+    "salary": "HKD 15,000 + 加班另计",
+    "age": "男, 45岁以下",
+    "language": "粤语",
+    "workTime": "每周6天, 每天9小时",
+    "accommodation": "住宿扣10%",
+    "category": "弱电技工",
+    "requirement": "熟悉监控布线，有电工经验都可以报名。主要做电子支付拉线装机",
+    "remark": "入港复试"
+  },
+  {
+    "id": 6,
+    "title": "弱电工（自动门）",
+    "company": "香港某公司",
+    "salary": "HKD 17,420",
+    "age": "40岁以下",
+    "language": "粤语流利",
+    "workTime": "8小时, 24小时轮班",
+    "accommodation": "住宿扣10%",
+    "category": "弱电技工",
+    "requirement": "负责自动门安装及维修保养，更换自动门损坏电子零件等相关工作。如有安装自动门及自动系统经验优先",
+    "remark": "需要5人；合约期24个月；或需夜间及红日轮班"
+  },
+  {
+    "id": 7,
+    "title": "电工（冷暖空调）",
+    "company": "香港某公司",
+    "salary": "HKD 18,440",
+    "age": "45岁左右",
+    "language": "未注明",
+    "workTime": "上六休一, 每天8小时",
+    "accommodation": "住宿扣10%",
+    "category": "电工",
+    "requirement": "冷暖空调经验，各样电力安装及电器维修，安全督导员证书",
+    "remark": "懂冰喉和Hot tap（不断水工法）优先"
+  },
+  {
+    "id": 8,
+    "title": "电气打磨装配工",
+    "company": "香港某公司",
+    "salary": "HKD 19,000",
+    "age": "男, 50岁以下",
+    "language": "一般粤语、懂读写中文",
+    "workTime": "轮班制 07:30-16:30 / 08:20-17:20 / 15:30-00:30 / 23:00-08:00",
+    "accommodation": "餐食自理、雇主提供宿舍（扣底薪10%）",
+    "category": "电工",
+    "requirement": "中三以上学历，工作经验三年。依据规例及规格安装、测试、保养和维修电力装置；装配、组合、设置、安装、保养及修理各类电气装置及设备（控制板及空调制冷设备电力控制除外）",
+    "remark": "持有电工A牌优先、焊工证优先；机械维修/装配打磨/钣金经验亦可"
+  },
+  {
+    "id": 9,
+    "title": "全能电工",
+    "company": "香港某公司",
+    "salary": "HKD 20,000",
+    "age": "男, 50岁以下",
+    "language": "粤语流利",
+    "workTime": "每周6天, 每天8小时",
+    "accommodation": "不包吃，包住（住宿不扣费!!）",
+    "category": "电工",
+    "requirement": "会机电工，偶尔需要装冷气，懂烧焊，需3年以上相关经验",
+    "remark": "住宿不扣费"
+  },
+  {
+    "id": 10,
+    "title": "水电工（连锁餐饮）",
+    "company": "香港某连锁餐饮公司",
+    "salary": "HKD 17,000（含兼职服务员补贴）",
+    "age": "男, 45岁内",
+    "language": "粤语流利",
+    "workTime": "8小时, 月休4-5天",
+    "accommodation": "包吃住不扣费",
+    "category": "水电、屋宇维修",
+    "requirement": "两年以上相关水电、工程维修经验，需要有效电工证。负责日常门店及员工宿舍的水电系统日常检查、维护与保养工作；门店繁忙时段协助传菜、清洁等服务工作",
+    "remark": "录用后需在珠海门店实习培训1.5-2个月，实习薪资约5000元/月；工作满一年享7天带薪年假"
+  },
+  {
+    "id": 11,
+    "title": "电器维修技工",
+    "company": "香港某公司",
+    "salary": "HKD 17,260",
+    "age": "男, 35-50岁内",
+    "language": "粤语",
+    "workTime": "8小时, 每周6天",
+    "accommodation": "不包吃, 住宿扣10%",
+    "category": "水电、屋宇维修",
+    "requirement": "有家电电器（雪柜、洗衣机、抽油烟机、燃气炉、热水器）维修经验，也需要有水电维修经验，有电工证优先",
+    "remark": "需全港各区上门维修服务，有车费及上门津贴"
+  },
+  {
+    "id": 12,
+    "title": "地盘电子技工 - 弱电（技术专才）",
+    "company": "香港某公司",
+    "salary": "HKD 24,000 - 26,000",
+    "age": "18-40岁",
+    "language": "粤语流利",
+    "workTime": "每周6天, 每天9小时, 08:00-18:00（1小时午饭）",
+    "accommodation": "雇主免费提供宿舍或住屋津贴",
+    "category": "专才岗位",
+    "requirement": "负责地盘通讯设备安装及维护（电话、宽带及Wifi系统接驳及设置）；CCTV及录像系统安装调试及设置，使用电动工具安装及接线等；需户外露天工作。持有有效电子工科证书；2年以上相关电子工作经验及建筑地盘经验优先；具备低压电工作业最少4年经验",
+    "remark": "需公证处「工作经历公证」公证书；内地认可的低压电力作业相关证书；获机电工程署认可笔试合格证明"
+  },
+  {
+    "id": 13,
+    "title": "屋宇设备技工（啤酒厂）",
+    "company": "HK某啤酒食品厂",
+    "salary": "HKD 21,187 + 加班另计",
+    "age": "男, 45岁以下",
+    "language": "粤语优先",
+    "workTime": "每天8.5小时; 08:30-18:00（含1小时休息）, 月休4天",
+    "accommodation": "不包吃, 不包住（协助找宿舍）",
+    "category": "水电、屋宇维修",
+    "requirement": "有电工证优先。安装、操作、保养和维修各类屋宇装置及设备。弱电维修、生产设备维修、编程逻辑电路知识。需酒厂/汽水厂设备维修经验，会维修变压电路首选",
+    "remark": "优选有此类维修经验3年以上；应征者须自行安排住宿"
+  },
+  {
+    "id": 14,
+    "title": "弱电技工（CCTV/门禁）",
+    "company": "香港某公司",
+    "salary": "HKD 18,840",
+    "age": "男, 45岁以下",
+    "language": "粤语流利",
+    "workTime": "每天9小时, 月休4天",
+    "accommodation": "包工作餐, 住扣10%",
+    "category": "弱电技工",
+    "requirement": "会用电动工具，看图纸，有维修和安装弱电、闭路电视、门禁系统等经验。能完成独立维修和安装工作，略懂英文和电脑",
+    "remark": "合同期24个月"
+  },
+  {
+    "id": 15,
+    "title": "弱电安装技工",
+    "company": "香港某公司",
+    "salary": "HKD 16,300",
+    "age": "男, 48岁以下",
+    "language": "粤语流利",
+    "workTime": "每天9小时, 每周6天",
+    "accommodation": "不包吃, 包住扣10%",
+    "category": "弱电技工",
+    "requirement": "负责独立安装及维护闭路电视（CCTV）系统、门禁系统及网络线缆布线工作",
+    "remark": "熟悉特定品牌设备及行业标准优先"
+  },
+  {
+    "id": 16,
+    "title": "弱电维护技工",
+    "company": "香港某公司",
+    "salary": "HKD 16,300",
+    "age": "男, 48岁以下",
+    "language": "粤语流利",
+    "workTime": "每天9小时, 每周6天",
+    "accommodation": "不包吃, 包住扣10%",
+    "category": "弱电技工",
+    "requirement": "负责独立维护闭路电视（CCTV）系统、门禁系统及网络线缆布线工作。能独立维护一个片区约1000支摄像头",
+    "remark": ""
+  },
+  {
+    "id": 17,
+    "title": "电气技工",
+    "company": "香港某公司",
+    "salary": "HKD 16,160",
+    "age": "男, 45岁以下",
+    "language": "熟练粤语",
+    "workTime": "每周6天, 09:00-18:00, 每天8小时",
+    "accommodation": "不包吃, 住宿扣10%",
+    "category": "电工",
+    "requirement": "1年以上相关经验。懂得使用基本电动工具（𠝹机、电钻、电子仪表）；懂得看电子线路图纸及装置安装图纸；能独立处理维修及安装工作；阅读及书写中文，略懂英文及电脑",
+    "remark": "需外勤工作；工作地点：观塘"
+  },
+  {
+    "id": 18,
+    "title": "机械工程技术员（飞机维修）",
+    "company": "香港新界某飞机配件维修公司",
+    "salary": "HKD 23,270 + 包住（扣10%）",
+    "age": "男女不限, 40岁以下",
+    "language": "粤语流利",
+    "workTime": "8小时（08:00-18:00 轮班）, 月休4天",
+    "accommodation": "包住（住宿扣10%）",
+    "category": "机械、工程技术员",
+    "requirement": "主要负责飞机支架、机械维修，有打磨烧焊经验优先，五年机械修理相关经验",
+    "remark": ""
+  },
+  {
+    "id": 19,
+    "title": "机械打磨装配工（飞机）",
+    "company": "香港新界某飞机配件维修公司",
+    "salary": "HKD 17,420 + 包住（扣10%）",
+    "age": "男女不限, 30岁以下",
+    "language": "粤语流利",
+    "workTime": "8小时（08:00-18:00 轮班）, 月休4天",
+    "accommodation": "包住（住宿扣10%）",
+    "category": "机械、工程技术员",
+    "requirement": "三年机械打磨装配相关经验",
+    "remark": ""
+  },
+  {
+    "id": 20,
+    "title": "修理技工（飞机水电）",
+    "company": "香港新界某飞机配件维修公司",
+    "salary": "HKD 16,340 + 包住（扣10%）",
+    "age": "男女不限, 30岁以下",
+    "language": "粤语流利",
+    "workTime": "8小时（08:00-18:00 轮班）, 月休4天",
+    "accommodation": "包住（住宿扣10%）",
+    "category": "机械、工程技术员",
+    "requirement": "三年以上水电维修相关经验",
+    "remark": ""
+  },
+  {
+    "id": 21,
+    "title": "机械工程技术员（液压）",
+    "company": "香港某公司",
+    "salary": "HKD 23,270 + 包住（扣10%）",
+    "age": "男, 50岁以下",
+    "language": "粤语流利优先",
+    "workTime": "09:00-18:00, 月休4天",
+    "accommodation": "包住（住宿扣10%）",
+    "category": "机械、工程技术员",
+    "requirement": "对液压系统、变速箱和发动机有维修的认识，有3年及以上相关维修工作经验",
+    "remark": ""
+  },
+  {
+    "id": 22,
+    "title": "全能工（装修翻新）",
+    "company": "香港某装修工程公司",
+    "salary": "HKD 20,000 + 包住（扣10%）",
+    "age": "男, 45岁以下",
+    "language": "粤语流利",
+    "workTime": "8小时轮班, 月休4天",
+    "accommodation": "包住（住宿扣10%）",
+    "category": "其他、全能技工",
+    "requirement": "精通电工、泥水、木器、油漆（以泥水油漆为主），可独立完成厕所浴室翻新工程",
+    "remark": "深圳现场面试，可出席交表"
+  },
+  {
+    "id": 23,
+    "title": "工程技术员（专才）",
+    "company": "香港某公司（葵涌）",
+    "salary": "HKD 20,000 以上",
+    "age": "未注明",
+    "language": "粤语流利",
+    "workTime": "每周5天, 08:30-18:00（8.5小时工作 + 1小时休息）",
+    "accommodation": "未注明",
+    "category": "专才岗位",
+    "requirement": "持电机、机械、屋宇设备或汽车工程文凭证书或同等学历，或完成相关技工学徒训练计划。两年以上相关经验。工作涉及办公室内设备维修（电灯、空调等）",
+    "remark": "持有电工牌或驾驶执照者优先；未持牌者公司可提供培训与进修资助；工作地点：葵涌"
+  },
+  {
+    "id": 24,
+    "title": "高级工程技术员（专才）",
+    "company": "香港某公司（葵涌）",
+    "salary": "HKD 20,000 以上",
+    "age": "未注明",
+    "language": "粤语流利",
+    "workTime": "每周5天, 08:30-18:00（8.5小时工作 + 1小时休息）",
+    "accommodation": "未注明",
+    "category": "专才岗位",
+    "requirement": "持电机、机械、屋宇设备或汽车工程文凭证书或同等学历。户外及高空工作，具重型机械经验（吊机、火车等）。两年以上相关经验",
+    "remark": "持有电工牌或驾驶执照者优先；工作地点：葵涌"
+  },
+  {
+    "id": 25,
+    "title": "电焊工/电工（澳门）",
+    "company": "澳门某工程公司",
+    "salary": "MOP 13,000",
+    "age": "年龄不限",
+    "language": "语言不限",
+    "workTime": "8小时/天, 月休1天",
+    "accommodation": "不包吃, 住宿补贴MOP 500/月",
+    "category": "其他、全能技工",
+    "requirement": "熟练掌握电弧焊（手工焊）、氩弧焊（TIG）、二氧化碳保护焊（MIG/MAG）、气焊与气割等多种焊接技术；精通电工、强弱电",
+    "remark": ""
+  },
+  {
+    "id": 26,
+    "title": "高级电工（专才证）",
+    "company": "香港某公司",
+    "salary": "年薪约 HK$25万（具体面议）",
+    "age": "未注明",
+    "language": "粤语流利, 会英语",
+    "workTime": "面议",
+    "accommodation": "未注明",
+    "category": "专才岗位",
+    "requirement": "大专以上学历，有电工证，有相关工作经验",
+    "remark": ""
+  },
+  {
+    "id": 27,
+    "title": "电工（建筑工程）",
+    "company": "香港某建筑工程公司",
+    "salary": "HKD 18,000",
+    "age": "男, 50岁以下",
+    "language": "粤语流利",
+    "workTime": "9小时, 月休4天",
+    "accommodation": "不包吃, 住宿扣10%",
+    "category": "电工",
+    "requirement": "2年以上相关实战经验，熟悉电力规格；体能良好，有电工证，电力工程经验者优先",
+    "remark": "工作地点：港九新界各客户工程地点"
+  },
+  {
+    "id": 28,
+    "title": "全能技工（风火水电）",
+    "company": "香港某建筑工程公司",
+    "salary": "HKD 20,000",
+    "age": "男, 45岁以下",
+    "language": "粤语",
+    "workTime": "9小时",
+    "accommodation": "不包吃, 住宿扣10%",
+    "category": "其他、全能技工",
+    "requirement": "五年以上相关工作经验，懂风火水电、维修安装等工作",
+    "remark": "工作地点：港九新界各客户工程地点"
+  },
+  {
+    "id": 29,
+    "title": "维修技术员（机场）",
+    "company": "香港某机场",
+    "salary": "HKD 18,000 + 津贴 HKD 1,020",
+    "age": "未注明",
+    "language": "粤语熟练, 懂英语优先",
+    "workTime": "轮班制, 每月工作24天, 每天7.25小时",
+    "accommodation": "不包住, 包一餐",
+    "category": "水电、屋宇维修",
+    "requirement": "需持水电工资格证，3年以上厨房设备/冷冻/暖通空调系统维护修理经验。执行例行维护和临时修理（照明、门禁、水龙头等）；协助完成工程项目",
+    "remark": ""
+  }
+];
+
+var CATEGORY_ORDER = ["全部", "电工", "弱电技工", "水电、屋宇维修", "机械、工程技术员", "专才岗位", "其他、全能技工"];
+var activeCategory = "全部";
+var searchQuery = "";
+
+function getVisibleCategories() {
+  // 只保留至少有一条数据的分类
+  var result = ["全部"];
+  CATEGORY_ORDER.slice(1).forEach(function(cat) {
+    if (JOBS.some(function(j) { return j.category === cat; })) {
+      result.push(cat);
+    }
+  });
+  return result;
+}
+
+function renderCategories() {
+  var cats = getVisibleCategories();
+  var list = document.getElementById('categoryList');
+  list.innerHTML = cats.map(function(cat) {
+    var count = cat === "全部" ? JOBS.length : JOBS.filter(function(j) { return j.category === cat; }).length;
+    return '<li class="' + (cat === activeCategory ? 'active' : '') + '" onclick="selectCategory(\'' + cat.replace(/'/g, "\\'") + '\')"><span>' + cat + '</span><span class="count">' + count + '</span></li>';
+  }).join('');
+}
+
+function getFilteredJobs() {
+  return JOBS.filter(function(j) {
+    var matchCat = activeCategory === "全部" || j.category === activeCategory;
+    if (!matchCat) return false;
+    if (!searchQuery) return true;
+    var q = searchQuery.toLowerCase();
+    return (j.title + j.company + j.salary + j.language + j.requirement + (j.remark||'') + j.category).toLowerCase().indexOf(q) !== -1;
+  });
+}
+
+function renderCards() {
+  var jobs = getFilteredJobs();
+  var grid = document.getElementById('cardGrid');
+  var empty = document.getElementById('emptyState');
+  var info = document.getElementById('resultInfo');
+  if (jobs.length === 0) {
+    grid.innerHTML = '';
+    empty.style.display = 'block';
+    info.textContent = '0 条结果';
+  } else {
+    empty.style.display = 'none';
+    info.textContent = '共 ' + jobs.length + ' 条';
+    grid.innerHTML = jobs.map(function(j) {
+      return '<div class="job-card" onclick="openDetail(' + j.id + ')"><div class="card-header"><span class="card-title">' + esc(j.title) + '</span><span class="card-salary">' + esc(j.salary) + '</span></div><div class="card-remark">' + esc(j.requirement).substring(0, 80) + (j.requirement.length > 80 ? '...' : '') + '</div><div class="card-meta"><span class="card-tag lang">' + esc(j.language) + '</span><span class="card-tag age">' + esc(j.age) + '</span><span class="card-tag time">' + esc(j.workTime) + '</span><span class="card-tag accom">' + esc(j.accommodation) + '</span></div></div>';
+    }).join('');
+  }
+}
+
+function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+function selectCategory(cat) { activeCategory = cat; renderCategories(); renderCards(); }
+
+function doSearch() {
+  searchQuery = document.getElementById('searchInput').value.trim();
+  document.getElementById('clearBtn').style.display = searchQuery ? 'block' : 'none';
+  renderCards();
+}
+
+function clearSearch() {
+  document.getElementById('searchInput').value = '';
+  searchQuery = '';
+  document.getElementById('clearBtn').style.display = 'none';
+  renderCards();
+}
+
+function openDetail(jobId) {
+  var job = JOBS.find(function(j) { return j.id === jobId; });
+  if (!job) return;
+  var body = document.getElementById('modalBody');
+  body.innerHTML =
+    '<h2 class="modal-title">' + esc(job.title) + '</h2>' +
+    '<div class="modal-company">' + esc(job.company) + '</div>' +
+    '<div class="modal-salary">' + esc(job.salary) + '</div>' +
+    '<div class="modal-section"><h4>基本要求</h4><div class="info-row">' +
+      '<div class="info-item"><strong>语言：</strong>' + esc(job.language) + '</div>' +
+      '<div class="info-item"><strong>年龄：</strong>' + esc(job.age) + '</div>' +
+      '<div class="info-item"><strong>工时：</strong>' + esc(job.workTime) + '</div>' +
+      '<div class="info-item"><strong>食宿：</strong>' + esc(job.accommodation) + '</div>' +
+    '</div></div>' +
+    '<div class="modal-section"><h4>工作内容及要求</h4><div class="full-text">' + esc(job.requirement) + '</div></div>' +
+    (job.remark ? '<div class="modal-section"><h4>备注</h4><div class="highlight-box">' + esc(job.remark) + '</div></div>' : '') +
+    '<div class="modal-section"><div class="info-item" style="display:inline-block"><strong>分类：</strong>' + esc(job.category) + '</div></div>';
+  document.getElementById('modalOverlay').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal(e) {
+  if (e && e.target !== document.getElementById('modalOverlay')) return;
+  document.getElementById('modalOverlay').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') { document.getElementById('modalOverlay').style.display = 'none'; document.body.style.overflow = ''; }
+});
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('menuMask').classList.toggle('show');
+}
+
+renderCategories();
+renderCards();
+</script>
+</body>
+</html>
