@@ -45,6 +45,7 @@ def parse_txt(filepath):
             "category": "",
             "requirement": "",
             "remark": "",
+            "agent": "",
         }
 
         # 逐行解析 标签：值
@@ -84,6 +85,8 @@ def parse_txt(filepath):
                     job['requirement'] = value
                 elif key in ('备注', '注意', '其他'):
                     job['remark'] = value
+                elif key in ('中介', '中介公司', '代理'):
+                    job['agent'] = value
                 else:
                     # 未知标签的内容追加到备注
                     if job['remark']:
@@ -111,6 +114,7 @@ def parse_txt(filepath):
         job['category'] = job['category'] or '其他、全能技工'
         job['requirement'] = job['requirement'] or '详见原文'
         job['remark'] = job['remark'] or ''
+        job['agent'] = job['agent'] or ''
 
         jobs.append(job)
         job_id += 1
@@ -189,6 +193,7 @@ body { font-family: "Microsoft YaHei", "PingFang SC", sans-serif; background: #f
 .job-card .card-tag.age { background: #fce4ec; color: #c62828; }
 .job-card .card-tag.time { background: #f3e5f5; color: #7b1fa2; }
 .job-card .card-tag.accom { background: #fff8e1; color: #f57f17; }
+.job-card .card-tag.agent { background: #f5f5f5; color: #616161; }
 .job-card .card-remark {
   font-size: 13px; color: #666; margin-top: 10px; line-height: 1.5;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
@@ -326,7 +331,7 @@ function renderCards() {
     empty.style.display = 'none';
     info.textContent = '共 ' + jobs.length + ' 条';
     grid.innerHTML = jobs.map(function(j) {
-      return '<div class="job-card" onclick="openDetail(' + j.id + ')"><div class="card-header"><span class="card-title">' + esc(j.title) + '</span><span class="card-salary">' + esc(j.salary) + '</span></div><div class="card-remark">' + esc(j.requirement).substring(0, 80) + (j.requirement.length > 80 ? '...' : '') + '</div><div class="card-meta"><span class="card-tag lang">' + esc(j.language) + '</span><span class="card-tag age">' + esc(j.age) + '</span><span class="card-tag time">' + esc(j.workTime) + '</span><span class="card-tag accom">' + esc(j.accommodation) + '</span></div></div>';
+      return '<div class="job-card" onclick="openDetail(' + j.id + ')"><div class="card-header"><span class="card-title">' + esc(j.title) + '</span><span class="card-salary">' + esc(j.salary) + '</span></div><div class="card-remark">' + esc(j.requirement).substring(0, 80) + (j.requirement.length > 80 ? '...' : '') + '</div><div class="card-meta"><span class="card-tag lang">' + esc(j.language) + '</span><span class="card-tag age">' + esc(j.age) + '</span><span class="card-tag time">' + esc(j.workTime) + '</span><span class="card-tag accom">' + esc(j.accommodation) + '</span>' + (j.agent ? '<span class="card-tag agent">' + esc(j.agent) + '</span>' : '') + '</div></div>';
     }).join('');
   }
 }
@@ -361,6 +366,7 @@ function openDetail(jobId) {
       '<div class="info-item"><strong>年龄：</strong>' + esc(job.age) + '</div>' +
       '<div class="info-item"><strong>工时：</strong>' + esc(job.workTime) + '</div>' +
       '<div class="info-item"><strong>食宿：</strong>' + esc(job.accommodation) + '</div>' +
+      (job.agent ? '<div class="info-item"><strong>中介：</strong>' + esc(job.agent) + '</div>' : '') +
     '</div></div>' +
     '<div class="modal-section"><h4>工作内容及要求</h4><div class="full-text">' + esc(job.requirement) + '</div></div>' +
     (job.remark ? '<div class="modal-section"><h4>备注</h4><div class="highlight-box">' + esc(job.remark) + '</div></div>' : '') +
